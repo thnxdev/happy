@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euxo pipefail
+
+happy ./testdata
+go test ./testdata
+go run ./testdata &
+trap 'kill "%%" || true' EXIT INT
+
+sleep 1
+
+# Fail because it's not authenticated
+curl --fail-with-body --data-binary '{"id": 3, "name": "Sally"}' http://localhost:8080/users && (echo "did not expect to succeed!"; exit 1)
+# Succeed
+curl -fsS http://localhost:8080/users | jq | tee /dev/stderr | jq -r '.[].name' | grep Alice
+curl --fail-with-body -u alice:secret --data-binary '{"id": 3, "name": "Sally"}' http://localhost:8080/users
+curl -fsS http://localhost:8080/users | jq | tee /dev/stderr | jq -r '.[].name' | grep Sally
+curl --fail-with-body -u alice:secret http://localhost:8080/users/3 | jq | tee /dev/stderr | jq -r '.name' | grep Sally
+curl -X POST http://localhost:8080/shutdown
+
+echo "Success!"
