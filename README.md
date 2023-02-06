@@ -121,8 +121,13 @@ func (u *UsersService) ListUsers(pagination Paginate) ([]User, error) {
 }
 ```
 
-Note: For query parameters, only a limited set of field types are currently
-supported, and embedded structs are not supported.
+#### Query parameter decoding
+
+For query parameters, embedded structs are not supported and fields may
+(currently) only be of types `bool`, `int` and `string`.
+
+The name of the query parameter will be the name of the Go field with the first
+letter lower-cased. This can be overridden with the field tag `query:"<name>"`.
 
 ## Response signature
 
