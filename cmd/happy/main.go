@@ -87,8 +87,9 @@ See https://github.com/thnxdev/happy for more information.
 		didWork = true
 
 		gctx := &genContext{
-			Writer: codewriter.New(pkg.Name),
-			pkg:    pkg,
+			Writer:      codewriter.New(pkg.Name),
+			pkg:         pkg,
+			haveDecoder: map[string]bool{},
 		}
 		gctx.Import("net/http", "io", "encoding/json", "strconv")
 		for _, svcEndpoints := range endpoints {
@@ -352,6 +353,10 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 	gctx.Import("net/url")
 	_, typeRef := gctx.TypeRef(paramType)
 	name = "decode" + ucFirst(strings.ReplaceAll(typeRef, ".", ""))
+	if gctx.haveDecoder[typeRef] {
+		return name, nil
+	}
+	gctx.haveDecoder[typeRef] = true
 	w := gctx.Trailer()
 	w.L("func %s(p url.Values, out *%s) (err error) {", name, typeRef)
 	w = w.Push()
@@ -374,6 +379,7 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 			w.L("out.%s = new(%s)", field.Name(), fieldType)
 			strctRef = "*" + strctRef
 		}
+		w.Import("fmt")
 		switch fieldType.String() {
 		case "time.Duration":
 			gctx.Import("time")
@@ -423,6 +429,7 @@ func lcFirst(s string) string {
 type genContext struct {
 	pkg *packages.Package
 	*codewriter.Writer
+	haveDecoder map[string]bool
 }
 
 func (g *genContext) Pos(pos token.Pos) token.Position {
@@ -536,7 +543,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 					return fmt.Errorf("%s: %w", pos, err)
 				}
 				w.L("if err := %s(r.URL.Query(), &param%d); err != nil {", decoderFn, i)
-				w.L(`  http.Error(w, fmt.Sprintf("Failed to decode query parameters: %%s", err), http.StatusBadRequest)`)
+				w.L(`  http.Error(w, err.Error(), http.StatusBadRequest)`)
 				w.L("  return")
 				w.L("}")
 			} else {
