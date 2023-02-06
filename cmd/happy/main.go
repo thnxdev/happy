@@ -393,7 +393,13 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 		case "string":
 			w.L("%s.%s = q[len(q)-1]", strctRef, field.Name())
 		default:
-			return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only time.Duration, int, string and bool are supported", paramType, field.Name(), field.Type())
+			if implements(field, textUnmarshalerInterface()) {
+				w.L("if err = %s.%s.UnmarshalText([]byte(q[len(q)-1])); err != nil {", strctRef, field.Name())
+				w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+				w.L("}")
+			} else {
+				return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only encoding.TextUnmarshaler, time.Duration, int, string and bool are supported", paramType, field.Name(), field.Type())
+			}
 		}
 		w = w.Pop()
 		w.L("}")
