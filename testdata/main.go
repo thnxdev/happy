@@ -90,8 +90,8 @@ func (s *Service) CreateUser(r *http.Request, user User) error {
 }
 
 type Paginate struct {
-	Page   int
-	Size   int
+	Page   int `query:"p"`
+	Size   int `query:"s"`
 	Sparse *bool
 }
 

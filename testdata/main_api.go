@@ -167,14 +167,14 @@ matched:
 	}
 }
 func decodePaginate(p url.Values, out *Paginate) (err error) {
-	if q, ok := p["page"]; ok {
+	if q, ok := p["p"]; ok {
 		if out.Page, err = strconv.Atoi(q[len(q)-1]); err != nil {
-			return fmt.Errorf("failed to decode query parameter \"page\" as int: %w", err)
+			return fmt.Errorf("failed to decode query parameter \"p\" as int: %w", err)
 		}
 	}
-	if q, ok := p["size"]; ok {
+	if q, ok := p["s"]; ok {
 		if out.Size, err = strconv.Atoi(q[len(q)-1]); err != nil {
-			return fmt.Errorf("failed to decode query parameter \"size\" as int: %w", err)
+			return fmt.Errorf("failed to decode query parameter \"s\" as int: %w", err)
 		}
 	}
 	if q, ok := p["sparse"]; ok {

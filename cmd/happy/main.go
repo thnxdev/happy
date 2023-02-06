@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/alecthomas/kong"
+	"github.com/fatih/structtag"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/thnxdev/happy/codewriter"
@@ -351,7 +352,14 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 	w = w.Push()
 	for i := 0; i < strct.NumFields(); i++ {
 		field := strct.Field(i)
+		tags, err := structtag.Parse(strct.Tag(i))
+		if err != nil {
+			return "", fmt.Errorf("invalid struct tag on %s.%s: %w", typeRef, field.Name(), err)
+		}
 		fieldName := lcFirst(field.Name())
+		if tag, err := tags.Get("query"); err == nil {
+			fieldName = tag.Name
+		}
 		w.L("if q, ok := p[%q]; ok {", fieldName)
 		w = w.Push()
 		fieldType := field.Type()
