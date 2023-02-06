@@ -92,7 +92,7 @@ See https://github.com/thnxdev/happy for more information.
 		}
 		gctx.Import("net/http", "io", "encoding/json", "strconv")
 		for _, svcEndpoints := range endpoints {
-			generateHandler(gctx, svcEndpoints, makeTree(svcEndpoints))
+			err := generateHandler(gctx, svcEndpoints, makeTree(svcEndpoints))
 			kctx.FatalIfErrorf(err)
 		}
 
@@ -138,7 +138,7 @@ func listEndpoints(pkgs []*packages.Package) error {
 	return nil
 }
 
-func generateHandler(gctx *genContext, eps []endpoint, tree *tree) {
+func generateHandler(gctx *genContext, eps []endpoint, tree *tree) error {
 	var ptr string
 	var recvType *types.Named
 	recv := eps[0].signature.Recv().Type()
@@ -172,13 +172,17 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) {
 	w = w.Push()
 	w.L("var err error")
 	w.L("var res any")
+	var treeError error
 	tree.Write(w, "return", func(w *codewriter.Writer, ep endpoint) {
 		if err := genEndpoint(gctx, w, ep); err != nil {
 			pos := gctx.Pos(ep.signature.Recv().Pos())
-			panic(fmt.Errorf("%s: failed to generate endpoint: %w", pos, err))
+			treeError = fmt.Errorf("%s: failed to generate endpoint: %w", pos, err)
 		}
 		w.L("goto matched")
 	})
+	if treeError != nil {
+		return treeError
+	}
 	w.L("  // No match but we don't return a 404 here, to allow the default handler to take control.")
 	w.L("  return")
 	w.L("matched:")
@@ -232,6 +236,7 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) {
 	w.L("}")
 	w = w.Pop()
 	w.L("}")
+	return nil
 }
 
 //nolint:nakedret
@@ -370,6 +375,11 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 			strctRef = "*" + strctRef
 		}
 		switch fieldType.String() {
+		case "time.Duration":
+			gctx.Import("time")
+			w.L("if %s.%s, err = time.ParseDuration(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+			w.L("}")
 		case "bool":
 			gctx.Import("strconv")
 			w.L("if %s.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", strctRef, field.Name())
@@ -383,7 +393,7 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 		case "string":
 			w.L("%s.%s = q[len(q)-1]", strctRef, field.Name())
 		default:
-			return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only int, string and bool are supported", paramType, field.Name(), field.Type())
+			return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only time.Duration, int, string and bool are supported", paramType, field.Name(), field.Type())
 		}
 		w = w.Pop()
 		w.L("}")
