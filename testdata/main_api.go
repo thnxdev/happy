@@ -177,5 +177,10 @@ func decodePaginate(p url.Values, out *Paginate) (err error) {
 			return fmt.Errorf("failed to decode query parameter \"size\" into type int: %w", err)
 		}
 	}
+	if q, ok := p["sparse"]; ok {
+		if out.Sparse, err = strconv.ParseBool(q[len(q)-1]); err != nil {
+			return fmt.Errorf("failed to decode query parameter \"sparse\" into type bool: %w", err)
+		}
+	}
 	return nil
 }

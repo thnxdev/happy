@@ -355,10 +355,15 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 		w.L("if q, ok := p[%q]; ok {", fieldName)
 		w = w.Push()
 		switch field.Type().String() {
+		case "bool":
+			gctx.Import("strconv")
+			w.L("if out.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", field.Name())
+			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, field.Type())
+			w.L("}")
 		case "int":
 			gctx.Import("strconv")
 			w.L("if out.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" into type %s: %%w", err)`, fieldName, field.Type())
+			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, field.Type())
 			w.L("}")
 		case "string":
 			w.L("out.%s = q[len(q)-1]", field.Name())
@@ -449,7 +454,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 			// Type aliases (eg. type Foo int) are supported if they alias
 			// string or int, or implement encoding.TextUnmarshaler.
 			switch {
-			case types.Implements(param.Type(), textUnmarshalerInterface()) || types.Implements(types.NewPointer(param.Type()), textUnmarshalerInterface()):
+			case implements(param, textUnmarshalerInterface()):
 				paramName := fmt.Sprintf("param%d", index)
 				w.L("var %s %s", paramName, ref)
 				w.L("if err := %s.UnmarshalText([]byte(params[%d])); err != nil {", paramName, index)
@@ -546,6 +551,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 	return nil
 }
 
+// A tree of path components mapping to endpoints.
 type tree struct {
 	part      string
 	children  []tree
@@ -637,4 +643,8 @@ func updateTree(out *tree, endpoint endpoint, path []string) {
 	}
 	out.children = append(out.children, tree{part: part})
 	updateTree(&out.children[len(out.children)-1], endpoint, path[1:])
+}
+
+func implements(v *types.Var, iface *types.Interface) bool {
+	return types.Implements(v.Type(), iface) || types.Implements(types.NewPointer(v.Type()), iface)
 }

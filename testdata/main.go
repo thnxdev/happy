@@ -90,8 +90,9 @@ func (s *Service) CreateUser(r *http.Request, user User) error {
 }
 
 type Paginate struct {
-	Page int
-	Size int
+	Page   int
+	Size   int
+	Sparse bool
 }
 
 //happy:api GET /users
