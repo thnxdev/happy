@@ -351,24 +351,31 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 	w = w.Push()
 	for i := 0; i < strct.NumFields(); i++ {
 		field := strct.Field(i)
-		fieldName := lcFirst(strings.ReplaceAll(field.Name(), ".", ""))
+		fieldName := lcFirst(field.Name())
 		w.L("if q, ok := p[%q]; ok {", fieldName)
 		w = w.Push()
-		switch field.Type().String() {
+		fieldType := field.Type()
+		strctRef := "out"
+		if _, ptr := fieldType.(*types.Pointer); ptr {
+			fieldType = fieldType.(*types.Pointer).Elem()
+			w.L("out.%s = new(%s)", field.Name(), fieldType)
+			strctRef = "*" + strctRef
+		}
+		switch fieldType.String() {
 		case "bool":
 			gctx.Import("strconv")
-			w.L("if out.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, field.Type())
+			w.L("if %s.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 			w.L("}")
 		case "int":
 			gctx.Import("strconv")
-			w.L("if out.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, field.Type())
+			w.L("if %s.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 			w.L("}")
 		case "string":
-			w.L("out.%s = q[len(q)-1]", field.Name())
+			w.L("%s.%s = q[len(q)-1]", strctRef, field.Name())
 		default:
-			return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s", paramType, field.Name(), field.Type())
+			return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only int, string and bool are supported", paramType, field.Name(), field.Type())
 		}
 		w = w.Pop()
 		w.L("}")
@@ -465,9 +472,9 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 
 			case bt == "string":
 				if bt != ref {
-					args = append(args, fmt.Sprintf("%s(matches[%d])", ref, index))
+					args = append(args, fmt.Sprintf("%s(params[%d])", ref, index))
 				} else {
-					args = append(args, fmt.Sprintf("matches[%d]", index))
+					args = append(args, fmt.Sprintf("params[%d]", index))
 				}
 
 			case bt == "int":
@@ -505,7 +512,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 					return fmt.Errorf("%s: %w", pos, err)
 				}
 				w.L("if err := %s(r.URL.Query(), &param%d); err != nil {", decoderFn, i)
-				w.L(`  http.Error(w, fmt.Sprintf("Failed to decode query parameters: %s", err), http.StatusBadRequest)`)
+				w.L(`  http.Error(w, fmt.Sprintf("Failed to decode query parameters: %%s", err), http.StatusBadRequest)`)
 				w.L("  return")
 				w.L("}")
 			} else {

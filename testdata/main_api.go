@@ -61,7 +61,7 @@ func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				case "GET":
 					var param0 Paginate
 					if err := decodePaginate(r.URL.Query(), &param0); err != nil {
-						http.Error(w, fmt.Sprintf("Failed to decode query parameters: %!s(MISSING)", err), http.StatusBadRequest)
+						http.Error(w, fmt.Sprintf("Failed to decode query parameters: %s", err), http.StatusBadRequest)
 						return
 					}
 					res, err = h.ListUsers(param0)
@@ -169,17 +169,18 @@ matched:
 func decodePaginate(p url.Values, out *Paginate) (err error) {
 	if q, ok := p["page"]; ok {
 		if out.Page, err = strconv.Atoi(q[len(q)-1]); err != nil {
-			return fmt.Errorf("failed to decode query parameter \"page\" into type int: %w", err)
+			return fmt.Errorf("failed to decode query parameter \"page\" as int: %w", err)
 		}
 	}
 	if q, ok := p["size"]; ok {
 		if out.Size, err = strconv.Atoi(q[len(q)-1]); err != nil {
-			return fmt.Errorf("failed to decode query parameter \"size\" into type int: %w", err)
+			return fmt.Errorf("failed to decode query parameter \"size\" as int: %w", err)
 		}
 	}
 	if q, ok := p["sparse"]; ok {
-		if out.Sparse, err = strconv.ParseBool(q[len(q)-1]); err != nil {
-			return fmt.Errorf("failed to decode query parameter \"sparse\" into type bool: %w", err)
+		out.Sparse = new(bool)
+		if *out.Sparse, err = strconv.ParseBool(q[len(q)-1]); err != nil {
+			return fmt.Errorf("failed to decode query parameter \"sparse\" as bool: %w", err)
 		}
 	}
 	return nil
