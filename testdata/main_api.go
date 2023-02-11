@@ -61,7 +61,7 @@ func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				case "GET":
 					var param0 Paginate
 					if err := decodePaginate(r.URL.Query(), &param0); err != nil {
-						http.Error(w, fmt.Sprintf("Failed to decode query parameters: %s", err), http.StatusBadRequest)
+						http.Error(w, err.Error(), http.StatusBadRequest)
 						return
 					}
 					res, err = h.ListUsers(param0)

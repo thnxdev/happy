@@ -62,7 +62,9 @@ HandlerOptions(r *http.Request) map[string]string
 This method will return the metadata map associated with the inbound request, or
 `nil`.
 
-A handy pattern is to create a wrapping `http.Handler` that injects the options
+### Middleware
+
+A handy pattern is to create a wrapping `http.Handler` that injects options
 into the inbound request context like so:
 
 ```go
@@ -77,6 +79,23 @@ func OptionsMiddleware(options OptionHandler, next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), Options, options.HandlerOptions(r))
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
+	})
+}
+```
+
+Middleware can then make decisions based on the values of options. For example, a hypothetical `auth` option might be used like so:
+
+```go
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, auth := r.Context.Value(Options)["auth]
+		if !auth {
+			next.ServeHttp(w, r)
+			return
+		}
+		// Authenticate endpoint...
+		cookie, err := r.Cookie("auth")
+		// ...
 	})
 }
 ```
