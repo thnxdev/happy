@@ -12,7 +12,12 @@ import (
 )
 
 func (h *Service) HandlerOptions(r *http.Request) map[string]string {
-	parts := strings.Split(r.URL.Path, "/")
+	parts := []string{}
+	for i, p := range strings.Split(r.URL.Path, "/") {
+		if i == 0 || p != "" {
+			parts = append(parts, p)
+		}
+	}
 	var params []string
 	_ = params
 	switch parts[0] {
@@ -38,7 +43,12 @@ func (h *Service) HandlerOptions(r *http.Request) map[string]string {
 func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var res any
-	parts := strings.Split(r.URL.Path, "/")
+	parts := []string{}
+	for i, p := range strings.Split(r.URL.Path, "/") {
+		if i == 0 || p != "" {
+			parts = append(parts, p)
+		}
+	}
 	var params []string
 	_ = params
 	switch parts[0] {
