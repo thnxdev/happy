@@ -609,7 +609,12 @@ func (t *tree) String() string {
 
 func (t *tree) Write(w *codewriter.Writer, earlyExit string, visitor func(w *codewriter.Writer, endpoint endpoint)) {
 	w.Import("strings")
-	w.L(`parts := strings.Split(r.URL.Path, "/")`)
+	w.L(`parts := []string{}`)
+	w.L(`for i, p := range strings.Split(r.URL.Path, "/") {`)
+	w.L(`	if i == 0 || p != "" {`)
+	w.L(`		parts = append(parts, p)`)
+	w.L(`	}`)
+	w.L(`}`)
 	w.L(`var params []string`)
 	w.L(`_ = params`)
 	w.L(`switch parts[0] {`)
