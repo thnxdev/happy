@@ -229,7 +229,7 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) error {
 		w.L("  http.Error(w, `failed to encode response: ` + err.Error(), http.StatusInternalServerError)")
 		w.L("  return")
 		w.L("}")
-		w.L("w.Header().Set(\"Content-Type\", \"application/json\")")
+		w.L("w.Header().Set(\"Content-Type\", \"application/json; charset=utf-8\")")
 		w.L("w.Header().Set(\"Content-Length\", strconv.Itoa(len(data)))")
 		w.L("w.WriteHeader(http.StatusOK)")
 		w.L("w.Write(data)")
