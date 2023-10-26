@@ -379,20 +379,22 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 			w.L("out.%s = new(%s)", field.Name(), fieldType)
 			strctRef = "*" + strctRef
 		}
-		w.Import("fmt")
 		switch fieldType.String() {
 		case "time.Duration":
 			gctx.Import("time")
+			w.Import("fmt")
 			w.L("if %s.%s, err = time.ParseDuration(q[len(q)-1]); err != nil {", strctRef, field.Name())
 			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 			w.L("}")
 		case "bool":
 			gctx.Import("strconv")
+			w.Import("fmt")
 			w.L("if %s.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", strctRef, field.Name())
 			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 			w.L("}")
 		case "int":
 			gctx.Import("strconv")
+			w.Import("fmt")
 			w.L("if %s.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", strctRef, field.Name())
 			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 			w.L("}")
@@ -400,6 +402,7 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 			w.L("%s.%s = q[len(q)-1]", strctRef, field.Name())
 		default:
 			if implements(field, textUnmarshalerInterface()) {
+				w.Import("fmt")
 				w.L("if err = %s.%s.UnmarshalText([]byte(q[len(q)-1])); err != nil {", strctRef, field.Name())
 				w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
 				w.L("}")
