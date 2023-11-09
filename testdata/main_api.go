@@ -18,7 +18,7 @@ func (h *Service) HandlerOptions(r *http.Request) map[string]string {
 			parts = append(parts, p)
 		}
 	}
-	var params []string
+	var params map[string]string = map[string]string{}
 	_ = params
 	switch parts[0] {
 	case "":
@@ -30,7 +30,12 @@ func (h *Service) HandlerOptions(r *http.Request) map[string]string {
 			if len(parts) == 2 {
 				switch r.Method { // Leaf
 				case "POST":
-					return map[string]string{"authenticated": ""}
+					out := map[string]string{"authenticated": ""}
+					// Merge url params into options
+					for k, v := range params {
+						out[k] = v
+					}
+					return out
 				}
 				return nil
 			}
@@ -49,7 +54,7 @@ func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			parts = append(parts, p)
 		}
 	}
-	var params []string
+	var params map[string]string = map[string]string{}
 	_ = params
 	switch parts[0] {
 	case "":
@@ -81,12 +86,12 @@ func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			switch parts[2] {
 			default: // Parameter :id
-				params = append(params, parts[2])
+				params[":id"] = parts[2]
 				if len(parts) == 3 {
 					switch r.Method { // Leaf
 					case "GET":
 						var param0 ID
-						if err := param0.UnmarshalText([]byte(params[0])); err != nil {
+						if err := param0.UnmarshalText([]byte(params[":id"])); err != nil {
 							http.Error(w, "id: "+err.Error(), http.StatusBadRequest)
 							return
 						}
@@ -101,7 +106,7 @@ func (h *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						switch r.Method { // Leaf
 						case "GET":
 							var param0 ID
-							if err := param0.UnmarshalText([]byte(params[0])); err != nil {
+							if err := param0.UnmarshalText([]byte(params[":id"])); err != nil {
 								http.Error(w, "id: "+err.Error(), http.StatusBadRequest)
 								return
 							}
@@ -170,7 +175,7 @@ matched:
 			http.Error(w, `failed to encode response: `+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
