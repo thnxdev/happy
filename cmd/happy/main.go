@@ -163,7 +163,10 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) error {
 				w.L("return nil")
 				return
 			}
-			w.L("return %#v", ep.directive.options)
+			w.L("out := %#v", ep.directive.options)
+			w.L("// Merge url params into options")
+			w.L("for k, v := range params { out[k] = v }")
+			w.L("return out")
 		})
 		w.L("return nil")
 	})
@@ -498,7 +501,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 			case implements(param, textUnmarshalerInterface()):
 				paramName := fmt.Sprintf("param%d", index)
 				w.L("var %s %s", paramName, ref)
-				w.L("if err := %s.UnmarshalText([]byte(params[%d])); err != nil {", paramName, index)
+				w.L(`if err := %s.UnmarshalText([]byte(params[":%s"])); err != nil {`, paramName, param.Name())
 				w.L("  http.Error(w, \"%s: \" + err.Error(), http.StatusBadRequest)", param.Name())
 				w.L("  return")
 				w.L("}")
@@ -506,15 +509,15 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 
 			case bt == "string":
 				if bt != ref {
-					args = append(args, fmt.Sprintf("%s(params[%d])", ref, index))
+					args = append(args, fmt.Sprintf(`%s(params[":%s"])`, ref, param.Name()))
 				} else {
-					args = append(args, fmt.Sprintf("params[%d]", index))
+					args = append(args, fmt.Sprintf(`params[":%s"]`, param.Name()))
 				}
 
 			case bt == "int":
 				paramName := fmt.Sprintf("param%d", index)
 				w.L("var %s int", paramName)
-				w.L("%s, err = strconv.Atoi(params[%d])", paramName, index)
+				w.L(`%s, err = strconv.Atoi(params[":%s"])`, paramName, param.Name())
 				if bt != ref {
 					args = append(args, fmt.Sprintf("%s(%s)", ref, paramName))
 				} else {
@@ -618,7 +621,7 @@ func (t *tree) Write(w *codewriter.Writer, earlyExit string, visitor func(w *cod
 	w.L(`		parts = append(parts, p)`)
 	w.L(`	}`)
 	w.L(`}`)
-	w.L(`var params []string`)
+	w.L(`var params map[string]string = map[string]string{}`)
 	w.L(`_ = params`)
 	w.L(`switch parts[0] {`)
 	t.recursiveWrite(w, 0, visitor, earlyExit)
@@ -632,7 +635,7 @@ func (t *tree) recursiveWrite(w *codewriter.Writer, n int, visitor func(w *codew
 		w.L(`case "%s":`, t.part)
 	} else {
 		w.L(`default: // Parameter %s`, t.part)
-		w.L(`  params = append(params, parts[%d])`, n)
+		w.L(`  params["%s"] = parts[%d]`, t.part, n)
 	}
 	w.In(func(w *codewriter.Writer) {
 		w.In(func(w *codewriter.Writer) {
