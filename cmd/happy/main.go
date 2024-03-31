@@ -9,7 +9,6 @@ import (
 	"go/types"
 	"net/http"
 	"os"
-	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -449,7 +448,7 @@ func (g *genContext) TypeRef(t types.Type) (pkgRef, ref string) {
 		if pkgRef == g.pkg.PkgPath {
 			pkgRef = ""
 		} else {
-			ref = path.Base(pkgRef) + "." + ref
+			ref = named.Obj().Pkg().Name() + "." + ref
 		}
 		return
 	}
