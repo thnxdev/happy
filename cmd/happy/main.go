@@ -128,7 +128,7 @@ func listEndpoints(pkgs []*packages.Package) error {
 				dir := endpoint.directive
 				fmt.Printf("%s %s\n", dir.method, dir.pattern)
 				if dir.doc != "" {
-					for _, line := range strings.Split(strings.TrimSpace(dir.doc), "\n") {
+					for line := range strings.SplitSeq(strings.TrimSpace(dir.doc), "\n") {
 						fmt.Println("  " + line)
 					}
 				}
@@ -147,8 +147,8 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) error {
 		recvType = ptrt.Elem().(*types.Named)
 	}
 	w := gctx.Writer
-	w.L("")
-	w.L("func (h %s%s) HandlerOptions(r *http.Request) map[string]string {", ptr, recvType.Obj().Name())
+	w.Lf("")
+	w.Lf("func (h %s%s) HandlerOptions(r *http.Request) map[string]string {", ptr, recvType.Obj().Name())
 	optionsEndpoints := []endpoint{}
 	for _, ep := range eps {
 		if len(ep.directive.options) > 0 {
@@ -159,86 +159,86 @@ func generateHandler(gctx *genContext, eps []endpoint, tree *tree) error {
 	w.In(func(w *codewriter.Writer) {
 		optionsTree.Write(w, "return nil", func(w *codewriter.Writer, ep endpoint) {
 			if len(ep.directive.options) == 0 {
-				w.L("return nil")
+				w.Lf("return nil")
 				return
 			}
-			w.L("out := %#v", ep.directive.options)
-			w.L("// Merge url params into options")
-			w.L("for k, v := range params { out[k] = v }")
-			w.L("return out")
+			w.Lf("out := %#v", ep.directive.options)
+			w.Lf("// Merge url params into options")
+			w.Lf("for k, v := range params { out[k] = v }")
+			w.Lf("return out")
 		})
-		w.L("return nil")
+		w.Lf("return nil")
 	})
-	w.L("}")
-	w.L("")
-	w.L("func (h %s%s) ServeHTTP(w http.ResponseWriter, r *http.Request) {", ptr, recvType.Obj().Name())
+	w.Lf("}")
+	w.Lf("")
+	w.Lf("func (h %s%s) ServeHTTP(w http.ResponseWriter, r *http.Request) {", ptr, recvType.Obj().Name())
 	w = w.Push()
-	w.L("var err error")
-	w.L("var res any")
+	w.Lf("var err error")
+	w.Lf("var res any")
 	var treeError error
 	tree.Write(w, "return", func(w *codewriter.Writer, ep endpoint) {
 		if err := genEndpoint(gctx, w, ep); err != nil {
 			pos := gctx.Pos(ep.signature.Recv().Pos())
 			treeError = fmt.Errorf("%s: failed to generate endpoint: %w", pos, err)
 		}
-		w.L("goto matched")
+		w.Lf("goto matched")
 	})
 	if treeError != nil {
 		return treeError
 	}
-	w.L("  // No match but we don't return a 404 here, to allow the default handler to take control.")
-	w.L("  return")
-	w.L("matched:")
-	w.L("")
-	w.L("// Handle errors")
-	w.L("if err != nil {")
-	w.L("  if herr, ok := err.(http.Handler); ok {")
-	w.L("    herr.ServeHTTP(w, r)")
-	w.L("  } else {")
-	w.L("		 http.Error(w, err.Error(), http.StatusInternalServerError)")
-	w.L("  }")
-	w.L("  return")
-	w.L("}")
-	w.L("")
-	w.L("// Handle response")
-	w.L("switch res := res.(type) {")
-	w.L("case nil:")
-	w.L("  w.WriteHeader(http.StatusNoContent)")
-	w.L("case string:")
-	w.L("  w.Header().Set(\"Content-Type\", \"text/html\")")
-	w.L("  io.WriteString(w, res)")
-	w.L("case []byte:")
-	w.L("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
-	w.L("  w.Write(res)")
-	w.L("case *http.Response:")
-	w.L("  headers := w.Header()")
-	w.L("  for k, v := range res.Header {")
-	w.L("    headers[k] = v")
-	w.L("  }")
-	w.L("  w.WriteHeader(res.StatusCode)")
-	w.L("  _, _ = io.Copy(w, res.Body)")
-	w.L("case io.ReadCloser:")
-	w.L("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
-	w.L("  _, _ = io.Copy(w, res)")
-	w.L("  res.Close()")
-	w.L("case io.Reader:")
-	w.L("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
-	w.L("  _, _ = io.Copy(w, res)")
-	w.L("default:")
+	w.Lf("  // No match but we don't return a 404 here, to allow the default handler to take control.")
+	w.Lf("  return")
+	w.Lf("matched:")
+	w.Lf("")
+	w.Lf("// Handle errors")
+	w.Lf("if err != nil {")
+	w.Lf("  if herr, ok := err.(http.Handler); ok {")
+	w.Lf("    herr.ServeHTTP(w, r)")
+	w.Lf("  } else {")
+	w.Lf("		 http.Error(w, err.Error(), http.StatusInternalServerError)")
+	w.Lf("  }")
+	w.Lf("  return")
+	w.Lf("}")
+	w.Lf("")
+	w.Lf("// Handle response")
+	w.Lf("switch res := res.(type) {")
+	w.Lf("case nil:")
+	w.Lf("  w.WriteHeader(http.StatusNoContent)")
+	w.Lf("case string:")
+	w.Lf("  w.Header().Set(\"Content-Type\", \"text/html\")")
+	w.Lf("  io.WriteString(w, res)")
+	w.Lf("case []byte:")
+	w.Lf("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
+	w.Lf("  w.Write(res)")
+	w.Lf("case *http.Response:")
+	w.Lf("  headers := w.Header()")
+	w.Lf("  for k, v := range res.Header {")
+	w.Lf("    headers[k] = v")
+	w.Lf("  }")
+	w.Lf("  w.WriteHeader(res.StatusCode)")
+	w.Lf("  _, _ = io.Copy(w, res.Body)")
+	w.Lf("case io.ReadCloser:")
+	w.Lf("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
+	w.Lf("  _, _ = io.Copy(w, res)")
+	w.Lf("  res.Close()")
+	w.Lf("case io.Reader:")
+	w.Lf("  w.Header().Set(\"Content-Type\", \"application/octet-stream\")")
+	w.Lf("  _, _ = io.Copy(w, res)")
+	w.Lf("default:")
 	w.In(func(w *codewriter.Writer) {
-		w.L("data, err := json.Marshal(res)")
-		w.L("if err != nil {")
-		w.L("  http.Error(w, `failed to encode response: ` + err.Error(), http.StatusInternalServerError)")
-		w.L("  return")
-		w.L("}")
-		w.L("w.Header().Set(\"Content-Type\", \"application/json; charset=utf-8\")")
-		w.L("w.Header().Set(\"Content-Length\", strconv.Itoa(len(data)))")
-		w.L("w.WriteHeader(http.StatusOK)")
-		w.L("w.Write(data)")
+		w.Lf("data, err := json.Marshal(res)")
+		w.Lf("if err != nil {")
+		w.Lf("  http.Error(w, `failed to encode response: ` + err.Error(), http.StatusInternalServerError)")
+		w.Lf("  return")
+		w.Lf("}")
+		w.Lf("w.Header().Set(\"Content-Type\", \"application/json; charset=utf-8\")")
+		w.Lf("w.Header().Set(\"Content-Length\", strconv.Itoa(len(data)))")
+		w.Lf("w.WriteHeader(http.StatusOK)")
+		w.Lf("w.Write(data)")
 	})
-	w.L("}")
+	w.Lf("}")
 	w = w.Pop()
-	w.L("}")
+	w.Lf("}")
 	return nil
 }
 
@@ -360,9 +360,9 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 	}
 	gctx.haveDecoder[typeRef] = true
 	w := gctx.Trailer()
-	w.L("func %s(p url.Values, out *%s) (err error) {", name, typeRef)
+	w.Lf("func %s(p url.Values, out *%s) (err error) {", name, typeRef)
 	w = w.Push()
-	for i := 0; i < strct.NumFields(); i++ {
+	for i := range strct.NumFields() {
 		field := strct.Field(i)
 		tags, err := structtag.Parse(strct.Tag(i))
 		if err != nil {
@@ -372,52 +372,52 @@ func genQueryDecoderFunc(gctx *genContext, paramType types.Type) (name string, e
 		if tag, err := tags.Get("query"); err == nil {
 			fieldName = tag.Name
 		}
-		w.L("if q, ok := p[%q]; ok {", fieldName)
+		w.Lf("if q, ok := p[%q]; ok {", fieldName)
 		w = w.Push()
 		fieldType := field.Type()
 		strctRef := "out"
 		if _, ptr := fieldType.(*types.Pointer); ptr {
 			fieldType = fieldType.(*types.Pointer).Elem()
-			w.L("out.%s = new(%s)", field.Name(), fieldType)
+			w.Lf("out.%s = new(%s)", field.Name(), fieldType)
 			strctRef = "*" + strctRef
 		}
 		switch fieldType.String() {
 		case "time.Duration":
 			gctx.Import("time")
 			w.Import("fmt")
-			w.L("if %s.%s, err = time.ParseDuration(q[len(q)-1]); err != nil {", strctRef, field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
-			w.L("}")
+			w.Lf("if %s.%s, err = time.ParseDuration(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.Lf(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+			w.Lf("}")
 		case "bool":
 			gctx.Import("strconv")
 			w.Import("fmt")
-			w.L("if %s.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", strctRef, field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
-			w.L("}")
+			w.Lf("if %s.%s, err = strconv.ParseBool(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.Lf(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+			w.Lf("}")
 		case "int":
 			gctx.Import("strconv")
 			w.Import("fmt")
-			w.L("if %s.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", strctRef, field.Name())
-			w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
-			w.L("}")
+			w.Lf("if %s.%s, err = strconv.Atoi(q[len(q)-1]); err != nil {", strctRef, field.Name())
+			w.Lf(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+			w.Lf("}")
 		case "string":
-			w.L("%s.%s = q[len(q)-1]", strctRef, field.Name())
+			w.Lf("%s.%s = q[len(q)-1]", strctRef, field.Name())
 		default:
 			if implements(field, textUnmarshalerInterface()) {
 				w.Import("fmt")
-				w.L("if err = %s.%s.UnmarshalText([]byte(q[len(q)-1])); err != nil {", strctRef, field.Name())
-				w.L(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
-				w.L("}")
+				w.Lf("if err = %s.%s.UnmarshalText([]byte(q[len(q)-1])); err != nil {", strctRef, field.Name())
+				w.Lf(`  return fmt.Errorf("failed to decode query parameter \"%s\" as %s: %%w", err)`, fieldName, fieldType)
+				w.Lf("}")
 			} else {
 				return "", fmt.Errorf("can't decode query parameter into field %s.%s of type %s, only encoding.TextUnmarshaler, time.Duration, int, string and bool are supported", paramType, field.Name(), field.Type())
 			}
 		}
 		w = w.Pop()
-		w.L("}")
+		w.Lf("}")
 	}
-	w.L("return nil")
+	w.Lf("return nil")
 	w = w.Pop()
-	w.L("}")
+	w.Lf("}")
 	return name, nil
 }
 
@@ -458,8 +458,8 @@ func (g *genContext) TypeRef(t types.Type) (pkgRef, ref string) {
 func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 	params := ep.signature.Params()
 	isParam := map[string]bool{}
-	for i := 0; i < params.Len(); i++ {
-		isParam[params.At(i).Name()] = true
+	for v := range params.Variables() {
+		isParam[v.Name()] = true
 	}
 
 	isGroup := map[string]int{}
@@ -468,7 +468,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 	}
 
 	args := []string{}
-	for i := 0; i < params.Len(); i++ {
+	for i := range params.Len() {
 		param := params.At(i)
 		pos := gctx.Pos(param.Pos())
 		tn := param.Type().String()
@@ -499,11 +499,11 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 			switch {
 			case implements(param, textUnmarshalerInterface()):
 				paramName := fmt.Sprintf("param%d", index)
-				w.L("var %s %s", paramName, ref)
-				w.L(`if err := %s.UnmarshalText([]byte(params[":%s"])); err != nil {`, paramName, param.Name())
-				w.L("  http.Error(w, \"%s: \" + err.Error(), http.StatusBadRequest)", param.Name())
-				w.L("  return")
-				w.L("}")
+				w.Lf("var %s %s", paramName, ref)
+				w.Lf(`if err := %s.UnmarshalText([]byte(params[":%s"])); err != nil {`, paramName, param.Name())
+				w.Lf("  http.Error(w, \"%s: \" + err.Error(), http.StatusBadRequest)", param.Name())
+				w.Lf("  return")
+				w.Lf("}")
 				args = append(args, paramName)
 
 			case bt == "string":
@@ -515,17 +515,17 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 
 			case bt == "int":
 				paramName := fmt.Sprintf("param%d", index)
-				w.L("var %s int", paramName)
-				w.L(`%s, err = strconv.Atoi(params[":%s"])`, paramName, param.Name())
+				w.Lf("var %s int", paramName)
+				w.Lf(`%s, err = strconv.Atoi(params[":%s"])`, paramName, param.Name())
 				if bt != ref {
 					args = append(args, fmt.Sprintf("%s(%s)", ref, paramName))
 				} else {
 					args = append(args, paramName)
 				}
-				w.L("if err != nil {")
-				w.L("  http.Error(w, \"%s: \" + err.Error(), http.StatusBadRequest)", param.Name())
-				w.L("  return")
-				w.L("}")
+				w.Lf("if err != nil {")
+				w.Lf("  http.Error(w, \"%s: \" + err.Error(), http.StatusBadRequest)", param.Name())
+				w.Lf("  return")
+				w.Lf("}")
 
 			default:
 				return fmt.Errorf("%s: %s: unsupported named parameter type %q", pos, param.Name(), param.Type())
@@ -540,24 +540,24 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 			pkgRef, ref := gctx.TypeRef(param.Type())
 			gctx.Import(pkgRef)
 
-			w.L("var param%d %s", i, ref)
+			w.Lf("var param%d %s", i, ref)
 			gctx.Import("net/http")
 			if ep.directive.method == http.MethodGet || ep.directive.method == http.MethodDelete {
 				decoderFn, err := genQueryDecoderFunc(gctx, paramType)
 				if err != nil {
 					return fmt.Errorf("%s: %w", pos, err)
 				}
-				w.L("if err := %s(r.URL.Query(), &param%d); err != nil {", decoderFn, i)
-				w.L(`  http.Error(w, err.Error(), http.StatusBadRequest)`)
-				w.L("  return")
-				w.L("}")
+				w.Lf("if err := %s(r.URL.Query(), &param%d); err != nil {", decoderFn, i)
+				w.Lf(`  http.Error(w, err.Error(), http.StatusBadRequest)`)
+				w.Lf("  return")
+				w.Lf("}")
 			} else {
 				gctx.Import("encoding/json")
 				gctx.Import("fmt")
-				w.L("if err := json.NewDecoder(r.Body).Decode(&param%d); err != nil {", i)
-				w.L("  http.Error(w, fmt.Sprintf(\"Failed to decode request body: %%s\", err), http.StatusBadRequest)")
-				w.L("  return")
-				w.L("}")
+				w.Lf("if err := json.NewDecoder(r.Body).Decode(&param%d); err != nil {", i)
+				w.Lf("  http.Error(w, fmt.Sprintf(\"Failed to decode request body: %%s\", err), http.StatusBadRequest)")
+				w.Lf("  return")
+				w.Lf("}")
 			}
 			args = append(args, fmt.Sprintf("param%d", i))
 		}
@@ -566,7 +566,7 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 	switch results.Len() {
 	case 0:
 	case 2:
-		w.W("  res, err = ")
+		w.Wf("  res, err = ")
 		pos := gctx.Pos(results.At(0).Pos())
 		resType := results.At(0).Type()
 		switch resType.String() {
@@ -580,16 +580,16 @@ func genEndpoint(gctx *genContext, w *codewriter.Writer, ep endpoint) error {
 		}
 	case 1:
 		if results.At(0).Type().String() == "error" {
-			w.W("  err = ")
+			w.Wf("  err = ")
 			break
 		}
 		fallthrough
 	default:
 		return fmt.Errorf("%s: handler return values must be in the form (error) or (T, error)", ep.fn.Name())
 	}
-	w.L("h.%s(%s)", ep.fn.Name(), strings.Join(args, ", "))
+	w.Lf("h.%s(%s)", ep.fn.Name(), strings.Join(args, ", "))
 	if results.Len() == 0 {
-		w.L("return")
+		w.Lf("return")
 	}
 	return nil
 }
@@ -614,53 +614,53 @@ func (t *tree) String() string {
 
 func (t *tree) Write(w *codewriter.Writer, earlyExit string, visitor func(w *codewriter.Writer, endpoint endpoint)) {
 	w.Import("strings")
-	w.L(`parts := []string{}`)
-	w.L(`for i, p := range strings.Split(r.URL.Path, "/") {`)
-	w.L(`	if i == 0 || p != "" {`)
-	w.L(`		parts = append(parts, p)`)
-	w.L(`	}`)
-	w.L(`}`)
-	w.L(`var params map[string]string = map[string]string{}`)
-	w.L(`_ = params`)
-	w.L(`switch parts[0] {`)
+	w.Lf(`parts := []string{}`)
+	w.Lf(`for i, p := range strings.Split(r.URL.Path, "/") {`)
+	w.Lf(`	if i == 0 || p != "" {`)
+	w.Lf(`		parts = append(parts, p)`)
+	w.Lf(`	}`)
+	w.Lf(`}`)
+	w.Lf(`var params map[string]string = map[string]string{}`)
+	w.Lf(`_ = params`)
+	w.Lf(`switch parts[0] {`)
 	t.recursiveWrite(w, 0, visitor, earlyExit)
-	w.L(`}`)
+	w.Lf(`}`)
 }
 
 func (t *tree) recursiveWrite(w *codewriter.Writer, n int, visitor func(w *codewriter.Writer, endpoint endpoint), earlyExit string) {
 	// Check if we want to match more path components but we've run out.
 	// Variable path component always matches.
 	if !strings.HasPrefix(t.part, ":") {
-		w.L(`case "%s":`, t.part)
+		w.Lf(`case "%s":`, t.part)
 	} else {
-		w.L(`default: // Parameter %s`, t.part)
-		w.L(`  params["%s"] = parts[%d]`, t.part, n)
+		w.Lf(`default: // Parameter %s`, t.part)
+		w.Lf(`  params["%s"] = parts[%d]`, t.part, n)
 	}
 	w.In(func(w *codewriter.Writer) {
 		w.In(func(w *codewriter.Writer) {
-			w.L(`if len(parts) == %d {`, n+1)
+			w.Lf(`if len(parts) == %d {`, n+1)
 			w.In(func(w *codewriter.Writer) {
 				if len(t.endpoints) > 0 {
-					w.L(`switch r.Method { // Leaf`)
+					w.Lf(`switch r.Method { // Leaf`)
 					for _, endpoint := range t.endpoints {
-						w.L(`case "%s":`, endpoint.directive.method)
+						w.Lf(`case "%s":`, endpoint.directive.method)
 						w.In(func(w *codewriter.Writer) {
 							visitor(w, endpoint) //nolint:scopelint
 						})
 					}
-					w.L(`}`)
+					w.Lf(`}`)
 				}
-				w.L(`%s`, earlyExit)
+				w.Lf(`%s`, earlyExit)
 			})
-			w.L(`}`)
+			w.Lf(`}`)
 			if len(t.children) != 0 {
-				w.L(`switch parts[%d] {`, n+1)
+				w.Lf(`switch parts[%d] {`, n+1)
 				for _, child := range t.children {
 					child.recursiveWrite(w, n+1, visitor, earlyExit)
 				}
-				w.L(`}`)
+				w.Lf(`}`)
 			} else {
-				w.L(`%s`, earlyExit)
+				w.Lf(`%s`, earlyExit)
 			}
 		})
 	})

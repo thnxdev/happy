@@ -9,11 +9,11 @@ import (
 
 func TestCodeWriter(t *testing.T) {
 	w := codewriter.New("pkg")
-	w.L("func hello() {")
+	w.Lf("func hello() {")
 	w.In(func(w *codewriter.Writer) {
-		w.L(`println("hello")`)
+		w.Lf(`println("hello")`)
 	})
-	w.L("}")
+	w.Lf("}")
 	expected := `func hello() {
   println("hello")
 }

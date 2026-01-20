@@ -21,14 +21,14 @@ func New(pkg string) *Writer {
 	return &Writer{w: &bytes.Buffer{}, pkg: pkg, imports: &[]string{}}
 }
 
-// W writes a formatted string directly to the writer without indentation or newline.
-func (c *Writer) W(format string, args ...interface{}) {
+// Wf writes a formatted string directly to the writer without indentation or newline.
+func (c *Writer) Wf(format string, args ...any) {
 	fmt.Fprintf(c.w, format, args...)
 }
 
-// L writes a newline-terminated string to the writer.
-func (c *Writer) L(format string, args ...interface{}) {
-	c.W(c.indent+format+"\n", args...)
+// Lf writes a newline-terminated string to the writer.
+func (c *Writer) Lf(format string, args ...any) {
+	c.Wf(c.indent+format+"\n", args...)
 }
 
 // In calls "fn" with a Writer that is indented one level.
